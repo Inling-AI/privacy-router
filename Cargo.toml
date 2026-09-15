@@ -1,0 +1,82 @@
+[workspace]
+members = [
+    "crates/privacy-model",
+    "crates/privacy-filter",
+    "crates/privacy-filter-cache",
+    "crates/privacy-rules",
+    "crates/privacy-telemetry",
+    "crates/privacy-store",
+    "crates/privacy-router",
+]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.92"
+license = "Apache-2.0"
+version = "0.1.0"
+
+[workspace.dependencies]
+# 推理
+burn = { version = "0.21.0", default-features = false, features = ["std", "ndarray"] }
+burn-store = { version = "0.21.0", default-features = false, features = ["std", "safetensors", "memmap"] }
+tokenizers = { version = "0.22", default-features = false, features = ["onig"] }
+
+# 序列化与错误
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2"
+strum = { version = "0.27", features = ["derive"] }
+indicatif = "0.18"
+sha2 = "0.11"
+tempfile = "3"
+
+# 异步运行时与 HTTP
+tokio = { version = "1.53", features = ["rt-multi-thread", "macros", "signal", "fs", "sync", "time"] }
+axum = { version = "0.8.9", features = ["macros"] }
+tower = "0.5.3"
+tower-http = { version = "0.7.1", features = ["trace", "limit", "timeout", "cors"] }
+hyper-util = { version = "0.1.20", features = ["tokio"] }
+http-body-util = "0.1.5"
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "json", "stream", "http2", "charset"] }
+bytes = "1.12"
+futures-util = "0.3.34"
+tokio-stream = "0.1.19"
+
+# 持久化：内嵌 SQLite，随二进制分发，不依赖系统 libsqlite3
+sqlx = { version = "0.9.0", default-features = false, features = [
+    "runtime-tokio",
+    "sqlite",
+    "sqlite-bundled",
+    "migrate",
+    "json",
+    "macros",
+] }
+
+# 统一日志
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json", "fmt"] }
+tracing-appender = "0.2.5"
+
+# 应用装配
+clap = { version = "4.6", features = ["derive", "env"] }
+# compression：控制台产物以 DEFLATE 形式内嵌，44 MB 的 wasm/JS 压到 15 MB 左右。
+rust-embed = { version = "8.12", features = ["compression"] }
+mime_guess = "2.0.5"
+uuid = { version = "1.26", features = ["v4"] }
+rpassword = "7.5"
+argon2 = { version = "0.6", features = ["rand_core", "zeroize"] }
+subtle = "2.6"
+zeroize = "1.9"
+
+# 测试
+rstest = "0.26"
+
+# 现有 crate 使用
+blake3 = "1"
+lru = "0.16"
+regex = "1"
+
+# 保留默认 release 优化与并行代码生成，仅剥离分发物的符号表以减小体积。
+[profile.release]
+strip = "symbols"

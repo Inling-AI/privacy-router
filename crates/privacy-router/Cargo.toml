@@ -1,0 +1,47 @@
+[package]
+name = "privacy-router"
+description = "LLM request proxy with local privacy detection, redaction, and an embedded console"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+default = []
+gpu = ["privacy-filter/gpu", "privacy-filter-cache/gpu"]
+
+[dependencies]
+privacy-model = { path = "../privacy-model", version = "0.1.0", features = ["download"] }
+indicatif.workspace = true
+privacy-filter = { path = "../privacy-filter", version = "0.1.0" }
+privacy-filter-cache = { path = "../privacy-filter-cache", version = "0.1.0" }
+privacy-rules = { path = "../privacy-rules", version = "0.1.0" }
+privacy-telemetry = { path = "../privacy-telemetry", version = "0.1.0" }
+privacy-store = { path = "../privacy-store", version = "0.1.0" }
+burn.workspace = true
+axum.workspace = true
+tokio.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+hyper-util.workspace = true
+http-body-util.workspace = true
+reqwest.workspace = true
+bytes.workspace = true
+futures-util.workspace = true
+tokio-stream.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+clap.workspace = true
+rust-embed.workspace = true
+mime_guess.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+blake3.workspace = true
+rpassword.workspace = true
+base64 = "0.22"
+
+[dev-dependencies]
+rstest.workspace = true
+sqlx.workspace = true

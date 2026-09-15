@@ -1,0 +1,5 @@
+# Rust 版本的唯一来源。rustup 会在本目录自动选择该工具链，
+# 因此裸跑 cargo/rustc 与 mise task 使用同一版本，不需要在 mise.toml 重复声明。
+[toolchain]
+channel = "1.95.0"
+components = ["rustfmt", "clippy"]

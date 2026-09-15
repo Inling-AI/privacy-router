@@ -1,0 +1,6 @@
+base_locale: en
+input_directory: lib/i18n
+output_directory: lib/i18n
+output_file_name: strings.g.dart
+flutter_integration: true
+locale_handling: true

@@ -1,0 +1,24 @@
+[package]
+name = "privacy-store"
+description = "SQLite persistence for Privacy Router rules, routing, audit records, and sessions"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+privacy-filter = { path = "../privacy-filter", version = "0.1.0" }
+privacy-rules = { path = "../privacy-rules", version = "0.1.0" }
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+tokio.workspace = true
+argon2.workspace = true
+zeroize.workspace = true
+blake3.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true

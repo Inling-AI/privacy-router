@@ -1,0 +1,32 @@
+/target/
+/models/
+*.partial
+__pycache__/
+/test.payload.json
+# Local real-request fixtures may contain credentials and private conversation data.
+/test_inputs/
+
+# FVM Version Cache
+.fvm/
+
+# Flutter/Dart generated files
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+coverage/
+
+# Local IDE and environment files
+.idea/
+.vscode/
+*.iml
+*.log
+
+# Local runtime database
+privacy-router.db
+privacy-router.db-shm
+privacy-router.db-wal
+
+# Staged GitHub release executables
+/dist/

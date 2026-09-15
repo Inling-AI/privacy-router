@@ -1,0 +1,23 @@
+[package]
+name = "privacy-filter-cache"
+description = "Bounded fragment-level inference caching for privacy-filter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[features]
+default = []
+gpu = ["privacy-filter/gpu"]
+
+[dependencies]
+privacy-filter = { path = "../privacy-filter", version = "0.1.0" }
+burn.workspace = true
+serde.workspace = true
+blake3.workspace = true
+lru.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true
+serde_json.workspace = true

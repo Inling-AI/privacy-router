@@ -1,0 +1,29 @@
+[package]
+name = "privacy-filter"
+description = "Local OpenAI Privacy Filter token classification powered by Burn"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+readme = "README.md"
+keywords = ["privacy", "pii", "burn", "inference", "nlp"]
+categories = ["science", "text-processing"]
+include = ["src/**", "examples/**", "tests/**", "Cargo.toml", "README.md"]
+
+[features]
+default = []
+gpu = ["burn/wgpu", "burn/fusion", "burn/metal"]
+
+[dependencies]
+privacy-model = { path = "../privacy-model", version = "0.1.0" }
+burn.workspace = true
+burn-store.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokenizers.workspace = true
+strum.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true

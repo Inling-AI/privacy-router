@@ -1,0 +1,46 @@
+name: Check static demo
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'apps/console/**'
+      - '.fvmrc'
+      - 'scripts/prune_web_release.sh'
+      - '.github/workflows/demo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version-file: .fvmrc
+          channel: any
+          cache: true
+      - name: Validate console
+        working-directory: apps/console
+        run: |
+          flutter pub get --enforce-lockfile
+          flutter analyze --no-pub
+          flutter test --no-pub
+      - name: Build backend-free demo
+        working-directory: apps/console
+        run: >-
+          flutter build web --wasm --release --no-pub
+          --dart-define=PRIVACY_ROUTER_DEMO=true
+          --base-href /privacy-router-demo/ --output build/demo
+      - name: Prepare static site
+        run: |
+          bash scripts/prune_web_release.sh apps/console/build/demo
+          touch apps/console/build/demo/.nojekyll

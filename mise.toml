@@ -1,0 +1,239 @@
+# 环境与标准流程的唯一入口。
+#
+# 版本事实各自只有一个来源，本文件不复制它们：
+#   Rust    -> rust-toolchain.toml（rustup 自动读取）
+#   Flutter -> .fvmrc（fvm 读取）
+# 因此本文件只声明工具本身与流程编排。Flutter SDK 刻意不交给 mise：
+# 它由 fvm 在项目内按 .fvmrc 固定，全局默认版本与本项目无关。
+
+[tools]
+"aqua:leoafarias/fvm" = "4.0.5"
+python = "3"
+uv = "0.11.3"
+
+# ---------------------------------------------------------------------------
+# 环境准备
+# ---------------------------------------------------------------------------
+
+[tasks.toolchain]
+description = "按 rust-toolchain.toml 安装 Rust 工具链与组件"
+run = """
+rustup toolchain install
+rustup component add rustfmt clippy
+"""
+
+[tasks."flutter:install"]
+description = "按 .fvmrc 安装并固定 Flutter SDK"
+run = "fvm install && fvm use"
+
+[tasks."model:download"]
+description = "下载并校验固定版本的模型权重"
+run = "cargo run --release -p privacy-router -- model download"
+
+[tasks.setup]
+description = "从零准备开发环境：Rust 工具链、Flutter SDK、模型权重"
+depends = ["toolchain", "flutter:install", "model:download"]
+
+[tasks.doctor]
+description = "校验环境是否满足构建与运行要求"
+run = "bash scripts/doctor.sh"
+
+# ---------------------------------------------------------------------------
+# 前端（apps/console）
+# ---------------------------------------------------------------------------
+
+[tasks."web:get"]
+description = "解析控制台依赖"
+dir = "apps/console"
+run = "fvm flutter pub get"
+
+[tasks."web:analyze"]
+description = "静态分析控制台"
+dir = "apps/console"
+run = "fvm flutter analyze"
+
+[tasks."web:build"]
+description = "编译并裁剪 web 产物（只留 WasmGC + skwasm 路径）"
+dir = "apps/console"
+depends = ["web:get"]
+# 不传 --pwa-strategy：该选项已被 Flutter 标记为弃用并将在后续版本移除。
+# 是否注册 service worker 由 web/index.html 决定，我们刻意不配置它——
+# 内嵌资源的单二进制里，service worker 只会缓存陈旧前端。
+# 裁剪必须跟在编译后面：flutter build web 会连 dart2js 回退和整套 canvaskit 变体一起
+# 产出，而这些东西会被 rust-embed 内嵌进发布二进制。理由与删除清单见脚本本身。
+run = """
+fvm flutter build web --wasm --release
+bash ../../scripts/prune_web_release.sh build/web
+"""
+
+[tasks."web:test"]
+description = "运行控制台测试"
+dir = "apps/console"
+run = "fvm flutter test"
+
+# 开发回路：热重载。控制台由 Dart 开发服务器托管，API 直连本进程，因此需要
+# --dev-origin 放开跨源。发布形态同源，不需要也不启用这条路径。
+[tasks."web:dev"]
+description = "热重载运行控制台，API 指向本机代理"
+dir = "apps/console"
+run = """
+mkdir -p /tmp/privacy-router-dev
+CHROME_EXECUTABLE="/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" \
+  fvm flutter run -d chrome \
+  --web-port 5173 \
+  --web-hostname 127.0.0.1 \
+  --pid-file /tmp/privacy-router-dev/flutter.pid \
+  --dart-define=PRIVACY_ROUTER_API=${PRIVACY_ROUTER_API:-http://127.0.0.1:8787}
+"""
+
+[tasks."dev:up"]
+description = "启动完整开发环境：Rust API 与 Flutter 热重载控制台"
+run = "bash scripts/dev_start.sh"
+
+[tasks."relay:chat"]
+description = "追加复述消息，以 Chat Completions 格式测试真实 payload"
+usage = 'arg "<payload>" help="请求体 JSON 文件路径"'
+run = 'uv run --locked scripts/relay.py chat "$usage_payload"'
+
+[tasks."relay:responses"]
+description = "追加复述消息，以 Responses 格式测试真实 payload"
+usage = 'arg "<payload>" help="请求体 JSON 文件路径"'
+run = 'uv run --locked scripts/relay.py responses "$usage_payload"'
+
+[tasks."relay:messages"]
+description = "追加复述消息，以 Anthropic Messages 格式测试真实 payload"
+usage = 'arg "<payload>" help="请求体 JSON 文件路径"'
+run = 'uv run --locked scripts/relay.py messages "$usage_payload"'
+
+[tasks."dev:stop"]
+description = "停止完整开发环境"
+run = "bash scripts/dev_start.sh stop"
+
+[tasks."dev:reload"]
+description = "触发 Flutter 热重载"
+run = "bash scripts/dev_reload.sh reload"
+
+[tasks."dev:restart"]
+description = "触发 Flutter 热重启"
+run = "bash scripts/dev_reload.sh restart"
+
+# ---------------------------------------------------------------------------
+# 后端（Rust workspace）
+# ---------------------------------------------------------------------------
+
+[tasks."rust:fmt"]
+description = "检查 Rust 格式"
+run = "cargo fmt --all -- --check"
+
+[tasks."rust:lint"]
+description = "Rust 静态检查（含 gpu feature）"
+run = "cargo clippy --workspace --all-targets --features gpu -- -D warnings"
+
+[tasks."rust:test"]
+description = "运行 Rust 测试"
+run = "cargo test --workspace"
+
+# ---------------------------------------------------------------------------
+# 应用
+# ---------------------------------------------------------------------------
+
+# 命名统一为 <域>:<动作>:<形态>[:<后端>]：
+#   动作 build  把发布物准备出来：模型权重、web 产物、Rust 二进制
+#   动作 run    把代理跑起来
+#   形态 dev    开发配置：放开 5173 跨源、不嵌入前端产物，配合 web:dev 热重载
+#   形态 debug  与 dev 相同但用 debug profile 编译（推理慢到无法交互，只用于排查）
+#   形态 release 发布形态：内嵌控制台的单二进制
+# PRIVACY_ROUTER_CARGO_FEATURES 决定编译能力；PRIVACY_ROUTER_BACKEND 决定运行时选择。
+# :cpu/:gpu 任务设置对应变量后委派给基础任务。
+
+[tasks."app:build:release"]
+description = "准备并编译发布物：模型权重、web 产物、Rust 二进制（特性由 PRIVACY_ROUTER_CARGO_FEATURES 决定）"
+depends = ["flutter:install"]
+run = """
+echo "[app:build:release] [1/4] 校验并准备模型"
+mise run model:download
+echo "[app:build:release] [2/4] 安装 Flutter 依赖并构建 release Web 静态资源"
+mise run web:build
+echo "[app:build:release] [3/4] 确认 Flutter 静态资源目录"
+test -f apps/console/build/web/index.html
+echo "[app:build:release] [4/4] 开始编译 Rust release 二进制"
+cargo build --release -p privacy-router --features "${PRIVACY_ROUTER_CARGO_FEATURES:-}"
+echo "[app:build:release] 编译完成：target/release/privacy-router"
+"""
+
+[tasks."app:build:release:cpu"]
+description = "以 CPU 后端准备并编译发布物"
+env.PRIVACY_ROUTER_CARGO_FEATURES = ""
+run = "mise run app:build:release"
+
+[tasks."app:build:release:gpu"]
+description = "以 GPU 后端准备并编译发布物"
+env.PRIVACY_ROUTER_CARGO_FEATURES = "gpu"
+run = "mise run app:build:release"
+
+[tasks."app:run:release"]
+description = "运行内嵌控制台的 release 单二进制（先走 app:build:release）"
+depends = ["app:build:release"]
+run = """
+echo "[app:run:release] 启动 release 代理（Ctrl-C 停止）"
+./target/release/privacy-router ${PRIVACY_ROUTER_ARGS:-}
+"""
+
+[tasks."app:run:release:cpu"]
+description = "以 CPU 后端准备、编译并运行 release 单二进制"
+env.PRIVACY_ROUTER_CARGO_FEATURES = ""
+env.PRIVACY_ROUTER_BACKEND = "cpu"
+run = "mise run app:run:release"
+
+[tasks."app:run:release:gpu"]
+description = "以 GPU 后端准备、编译并运行 release 单二进制"
+env.PRIVACY_ROUTER_CARGO_FEATURES = "gpu"
+env.PRIVACY_ROUTER_BACKEND = "gpu"
+run = "mise run app:run:release"
+
+[tasks."app:run:dev"]
+description = "以开发配置运行代理（放开 5173 跨源、不嵌入前端；编译特性由 PRIVACY_ROUTER_CARGO_FEATURES 决定，运行后端由 PRIVACY_ROUTER_BACKEND 决定）"
+# release 而非 debug：推理走的是同一份权重，debug 下 Burn 慢到无法交互，
+# 而这里需要热重载的是前端，后端重建频率很低。
+run = """
+PRIVACY_ROUTER_DEV_ORIGIN=http://127.0.0.1:5173 \
+  cargo run --release -p privacy-router --features "${PRIVACY_ROUTER_CARGO_FEATURES:-}" -- \
+  --bind ${PRIVACY_ROUTER_BIND:-127.0.0.1:8787} \
+  --database ${PRIVACY_ROUTER_DATABASE:-privacy-router.db} \
+  --log-filter ${PRIVACY_ROUTER_LOG_FILTER:-info,privacy_router=debug}
+"""
+
+[tasks."app:run:dev:cpu"]
+description = "以开发配置运行代理（CPU）"
+env.PRIVACY_ROUTER_CARGO_FEATURES = ""
+env.PRIVACY_ROUTER_BACKEND = "cpu"
+run = "mise run app:run:dev"
+
+[tasks."app:run:dev:gpu"]
+description = "以开发配置运行代理（GPU）"
+env.PRIVACY_ROUTER_CARGO_FEATURES = "gpu"
+env.PRIVACY_ROUTER_BACKEND = "gpu"
+run = "mise run app:run:dev"
+
+# debug 下 GPU 后端没有意义，所以这里没有 body/后端拆分，任务名直接写死 cpu。
+[tasks."app:run:debug:cpu"]
+description = "以开发配置运行代理的 debug 构建（显卡后端不参与；模型推理会非常慢，只用于排查非推理问题）"
+run = """
+PRIVACY_ROUTER_DEV_ORIGIN=http://127.0.0.1:5173 \
+  cargo run -p privacy-router -- \
+  --bind ${PRIVACY_ROUTER_BIND:-127.0.0.1:8787} \
+  --database ${PRIVACY_ROUTER_DATABASE:-privacy-router.db} \
+  --log-filter ${PRIVACY_ROUTER_LOG_FILTER:-info,privacy_router=debug}
+"""
+
+[tasks."app:init-admin"]
+description = "直接创建或重置管理员账号（首次安装也可以在浏览器里自助初始化）"
+run = "cargo run --release -p privacy-router -- init-admin"
+
+# ---------------------------------------------------------------------------
+# 聚合
+# ---------------------------------------------------------------------------
+
+[tasks.ci]
+description = "CI 全量校验"
+depends = ["rust:fmt", "rust:lint", "rust:test", "web:analyze", "web:test"]

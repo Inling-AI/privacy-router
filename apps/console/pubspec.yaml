@@ -1,0 +1,50 @@
+name: privacy_router_console
+description: Privacy Router 控制台：内容池、审批放行、规则与上游管理。
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  # Flutter 3.47.3 携带 Dart 3.13.3；cupertino_ui 与 riverpod 3 都要求 3.12+。
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # 设计系统：只依赖 Cupertino，不引入 material / material_ui。
+  cupertino_ui: ^1.0.2
+  # iOS 26 液态玻璃组件。精确锁定版本：它内部仍引用 framework 的
+  # package:flutter/cupertino.dart，需要主题桥接（见 lib/theme/console_theme.dart）。
+  liquid_glass_widgets:
+    path: ../../third_party/liquid_glass_widgets
+
+  flutter_riverpod: ^3.4.3
+  http: ^1.6.0
+
+  # CupertinoIcons 的字形来自这个包：framework 只提供图标类与码位，
+  # 字体资源由 cupertino_icons 声明。缺少它时所有图标都会渲染成豆腐块。
+  cupertino_icons: ^1.0.9
+  slang: ^4.19.1
+  slang_flutter: ^4.19.0
+  flutter_localizations:
+    sdk: flutter
+  animated_flip_counter: ^0.3.4
+  shared_preferences: ^2.5.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.16.1
+  slang_build_runner: ^4.19.0
+  # 未引入 riverpod_lint / custom_lint：截至撰写时两者的依赖无法共存——
+  # riverpod_lint >= 3.1.4 要求 analyzer_plugin ^0.14.0，而 custom_lint 0.8.1
+  # （最新版）要求 ^0.13.0，pub 无法求解。`flutter analyze` 覆盖静态检查。
+
+flutter:
+  uses-material-design: false
+
+  # 品牌标按亮度各一份，由 lib/theme/brand.dart 做唯一映射。
+  # 每种亮度只出一份 64px 资源：侧栏槽位是 22pt，最高 3x 需要 66px，缩放差额不可见。
+  assets:
+    - assets/brand/
