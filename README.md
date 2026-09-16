@@ -349,6 +349,12 @@ Use [Issues](https://github.com/Inling-AI/privacy-router/issues) for reproducibl
 and feature requests. Do not disclose exploitable vulnerabilities or secrets in
 public issues; use private vulnerability reporting if enabled for the repository.
 
+## Community
+
+Thanks to the [LINUX DO](https://linux.do/) community for providing a place to
+share and discuss open-source projects. Feedback, bug reports, and contributions
+from the community are welcome.
+
 ## License
 
 Privacy Router is licensed under [Apache-2.0](LICENSE). Third-party dependencies and
