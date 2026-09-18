@@ -102,7 +102,7 @@ jobs:
         run: python scripts/package_release.py --target "$BUILD_TARGET"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: release-${{ matrix.platform.target }}-combined
+          name: release-${{ matrix.platform.target }}
           path: dist/privacy-router-*
           if-no-files-found: error
           retention-days: 14
